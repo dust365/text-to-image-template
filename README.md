@@ -1,36 +1,69 @@
-# Text To Image App
+# Client Service Management Platform
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/text-to-image-template)
+A modern web application designed for Client Service Management, featuring a dedicated WebView debugging interface for testing camera and file upload capabilities on mobile devices.
 
-![Text To Image Template Preview](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/dddfe97e-e689-450b-d5a9-d49801da6a00/public)
+![Platform Preview](https://via.placeholder.com/800x400?text=Client+Service+Platform+Preview)
 
-<!-- dash-content-start -->
+## 🚀 Features
 
-Generate images based on text prompts using [Workers AI](https://developers.cloudflare.com/workers-ai/). In this example, going to the website will generate an image from the prompt "cyberpunk cat" using the `@cf/stabilityai/stable-diffusion-xl-base-1.0` model. Be patient! Your image may take a few seconds to generate.
+- **WebView Debugging**: Specialized module to test `capture="environment"` behavior in mobile WebViews.
+- **Camera Integration**: Seamlessly triggers native camera or photo gallery on iOS and Android.
+- **Responsive Design**: Premium, glassmorphism-inspired UI built with Tailwind CSS.
+- **Modern Stack**: Powered by React, TypeScript, and Vite for blazing fast performance.
 
-<!-- dash-content-end -->
+## 🛠 Tech Stack
 
-## Getting Started
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS (with Glassmorphism aesthetic)
+- **Deployment**: Ready for static hosting (e.g., Cloudflare Pages, Vercel)
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
+## 🏃‍♂️ Quick Start
 
-```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/text-to-image-template
-```
+### Prerequisites
 
-A live public deployment of this template is available at [https://text-to-image-template.templates.workers.dev](https://text-to-image-template.templates.workers.dev)
+- Node.js > 18.x
+- npm or yarn
 
-## Setup Steps
+### Installation
 
-1. Install the project dependencies with a package manager of your choice:
+1. **Clone the repository:**
+   ```bash
+   git clone <your-repo-url>
+   cd client-service-platform
+   ```
+
+2. **Install dependencies:**
    ```bash
    npm install
    ```
-2. Deploy the project!
+
+3. **Run the development server:**
    ```bash
-   npx wrangler deploy
+   npm run dev
    ```
-3. Monitor your worker
-   ```bash
-   npx wrangler tail
-   ```
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## 📱 Mobile Debugging
+
+To test the camera functionality:
+
+1. Connect your mobile device to the same network as your development machine.
+2. Find your machine's local IP address (e.g., `192.168.1.x`).
+3. Open `http://<YOUR_LOCAL_IP>:5173` in your mobile browser or inside your WebView app.
+4. Tap the **Upload / Camera Capture** area.
+5. Verify that the **Camera** option appears (due to `capture="environment"`).
+
+## 📦 Build for Production
+
+To create a production-ready build:
+
+```bash
+npm run build
+```
+
+The output will be in the `dist` directory, ready to be served by any static host.
+
+## 📄 License
+
+MIT
