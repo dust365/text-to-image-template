@@ -67,3 +67,15 @@ The output will be in the `dist` directory, ready to be served by any static hos
 ## 📄 License
 
 MIT
+
+## 🛠️ Service Management
+
+### Start Development Server
+Restart the service with network exposure (accessible from devices on the same Wi-Fi):
+
+```bash
+npm run dev
+```
+
+The server will typically start at: `http://<YOUR_LOCAL_IP>:5173`
+
