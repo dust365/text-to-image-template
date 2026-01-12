@@ -1,5 +1,6 @@
 import { useState, ChangeEvent } from 'react';
-import { Camera, Image as ImageIcon, Upload, X, Smartphone, Globe } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, X, Smartphone, Globe, Send, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { base64ToFile, uploadFile, createFileFromData } from './utils/fileUpload';
 
 // Declare the Flutter InAppWebView Bridge type
 declare global {
@@ -10,12 +11,20 @@ declare global {
     }
 }
 
+// 上传状态类型
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+
 function App() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [fileSize, setFileSize] = useState<string | null>(null);
     const [platform, setPlatform] = useState<'ios' | 'android'>('ios');
     const [showAndroidModal, setShowAndroidModal] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    // 上传接口地址（可以从环境变量或配置中读取）
+    // Vite 使用 import.meta.env，但这里使用默认值，实际使用时可以通过 props 或配置传入
+    const [uploadUrl] = useState<string>(import.meta.env.VITE_UPLOAD_URL || 'https://your-api.com/upload');
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (!e.target || !e.target.files?.length) {
@@ -30,12 +39,17 @@ function App() {
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
         setFileSize((file.size / 1024).toFixed(2) + ' KB');
+        // 重置上传状态
+        setUploadStatus('idle');
+        setUploadError(null);
     };
 
     const clearSelection = () => {
         setSelectedFile(null);
         setPreviewUrl(null);
         setFileSize(null);
+        setUploadStatus('idle');
+        setUploadError(null);
     };
 
     const handleAndroidClick = () => {
@@ -48,21 +62,61 @@ function App() {
                 .then((result: any) => {
                     if (result && result.base64) {
                         const base64Str = result.base64;
-                        setPreviewUrl(base64Str);
-                        setSelectedFile(null);
-
-                        // Calculate approximate size of Base64 string in KB
-                        // Each char is 1 byte in JS string usually, but strictly speaking it's data URI
-                        // Base64 padding '=' might exist, but length/1024 is good approximation of transmission size
-                        const sizeInKB = (base64Str.length / 1024).toFixed(2);
-                        setFileSize(sizeInKB + ' KB (Base64)');
+                        
+                        // 将 base64 转换为 File 对象（统一处理）
+                        try {
+                            const file = base64ToFile(base64Str, `android_${method}_${Date.now()}.jpg`);
+                            setSelectedFile(file);
+                            setPreviewUrl(base64Str); // 预览仍用 base64（data URI）
+                            setFileSize((file.size / 1024).toFixed(2) + ' KB');
+                            setUploadStatus('idle');
+                            setUploadError(null);
+                        } catch (err) {
+                            console.error('Error converting base64 to file:', err);
+                            setUploadError('转换文件失败');
+                        }
                     }
                 })
                 .catch((err: any) => {
                     console.error(`Bridge Error: ${err}`);
+                    setUploadError(`Bridge Error: ${err}`);
                 });
         }
         setShowAndroidModal(false);
+    };
+
+    /**
+     * 统一的文件上传函数
+     * 处理 iOS (File) 和 Android (base64 -> File) 两种情况
+     */
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setUploadError('请先选择文件');
+            return;
+        }
+
+        setUploadStatus('uploading');
+        setUploadError(null);
+
+        try {
+            // 统一使用 File 对象上传
+            const result = await uploadFile(selectedFile, uploadUrl, {
+                platform: platform,
+                timestamp: new Date().toISOString(),
+            });
+
+            setUploadStatus('success');
+            console.log('Upload success:', result);
+            
+            // 可选：上传成功后清理或显示成功消息
+            // setTimeout(() => {
+            //     clearSelection();
+            // }, 2000);
+        } catch (error: any) {
+            setUploadStatus('error');
+            setUploadError(error.message || '上传失败，请重试');
+            console.error('Upload error:', error);
+        }
     };
 
     return (
@@ -101,19 +155,72 @@ function App() {
 
                     {/* UPLOAD AREA */}
                     {previewUrl ? (
-                        <div className="relative rounded-2xl overflow-hidden bg-black/50 border border-white/10 group">
-                            <img src={previewUrl} className="w-full aspect-square object-cover" alt="Preview" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button onClick={clearSelection} className="p-3 bg-red-500/80 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-transform hover:scale-110">
-                                    <X size={24} />
-                                </button>
+                        <>
+                            <div className="relative rounded-2xl overflow-hidden bg-black/50 border border-white/10 group">
+                                <img src={previewUrl} className="w-full aspect-square object-cover" alt="Preview" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button onClick={clearSelection} className="p-3 bg-red-500/80 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-transform hover:scale-110">
+                                        <X size={24} />
+                                    </button>
+                                </div>
+
+                                {/* FILE SIZE INFO */}
+                                <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm p-2 text-center">
+                                    <span className="text-xs font-mono text-white/90">{fileSize}</span>
+                                </div>
                             </div>
 
-                            {/* FILE SIZE INFO */}
-                            <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm p-2 text-center">
-                                <span className="text-xs font-mono text-white/90">{fileSize}</span>
+                            {/* UPLOAD BUTTON & STATUS */}
+                            <div className="space-y-3 mt-4">
+                                <button
+                                    onClick={handleUpload}
+                                    disabled={uploadStatus === 'uploading'}
+                                    className={`
+                                        w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl 
+                                        font-semibold transition-all duration-300
+                                        ${uploadStatus === 'uploading'
+                                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                                            : uploadStatus === 'success'
+                                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25'
+                                        }
+                                    `}
+                                >
+                                    {uploadStatus === 'uploading' ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            上传中...
+                                        </>
+                                    ) : uploadStatus === 'success' ? (
+                                        <>
+                                            <CheckCircle2 className="w-5 h-5" />
+                                            上传成功
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-5 h-5" />
+                                            上传图片
+                                        </>
+                                    )}
+                                </button>
+
+                                {/* ERROR MESSAGE */}
+                                {uploadError && uploadStatus === 'error' && (
+                                    <div className="flex items-center gap-2 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
+                                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                        <span>{uploadError}</span>
+                                    </div>
+                                )}
+
+                                {/* SUCCESS MESSAGE */}
+                                {uploadStatus === 'success' && (
+                                    <div className="flex items-center gap-2 p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm">
+                                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                                        <span>文件上传成功！</span>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        </>
                     ) : (
                         <div className="relative group">
                             <div className={`
